@@ -2,9 +2,9 @@ import type { Plugin } from "@opencode-ai/plugin"
 import { tool } from "@opencode-ai/plugin"
 
 export const DiffViewerPlugin: Plugin = async ({ project, client, $, directory, worktree }) => {
-  const isDeltaInstalled = async (): Promise<boolean> => {
+  const isLumenInstalled = async (): Promise<boolean> => {
     try {
-      await $`which delta`
+      await $`which lumen`
       return true
     } catch {
       return false
@@ -29,10 +29,10 @@ export const DiffViewerPlugin: Plugin = async ({ project, client, $, directory, 
     }
   }
 
-  const installDelta = async (): Promise<{ success: boolean; method?: string; error?: string }> => {
+  const installLumen = async (): Promise<{ success: boolean; method?: string; error?: string }> => {
     if (await isBrewInstalled()) {
       try {
-        await $`brew install delta`
+        await $`brew install jnsahaj/lumen/lumen`
         return { success: true, method: "brew" }
       } catch (e) {
         console.warn(`brew install failed: ${e}`)
@@ -41,7 +41,7 @@ export const DiffViewerPlugin: Plugin = async ({ project, client, $, directory, 
 
     if (await isCargoInstalled()) {
       try {
-        await $`cargo install delta`
+        await $`cargo install lumen`
         return { success: true, method: "cargo" }
       } catch (e) {
         console.warn(`cargo install failed: ${e}`)
@@ -50,24 +50,24 @@ export const DiffViewerPlugin: Plugin = async ({ project, client, $, directory, 
 
     return {
       success: false,
-      error: "Neither brew nor cargo available. Please install delta manually:\n  brew install dandavison/delta/delta\n  # or\n  cargo install delta"
+      error: "Neither brew nor cargo available. Please install lumen manually:\n  brew install jnsahaj/lumen/lumen\n  # or\n  cargo install lumen"
     }
   }
 
-  const ensureDeltaInstalled = async (): Promise<{ installed: boolean; message?: string }> => {
-    if (await isDeltaInstalled()) {
+  const ensureLumenInstalled = async (): Promise<{ installed: boolean; message?: string }> => {
+    if (await isLumenInstalled()) {
       return { installed: true }
     }
 
-    const result = await installDelta()
+    const result = await installLumen()
     if (result.success) {
-      return { installed: true, message: `✅ delta installed via ${result.method}` }
+      return { installed: true, message: `✅ lumen installed via ${result.method}` }
     }
 
     return { installed: false, message: `❌ ${result.error}` }
   }
 
-  await ensureDeltaInstalled()
+  await ensureLumenInstalled()
 
   const getModifiedFiles = async (): Promise<string[]> => {
     try {
@@ -83,14 +83,14 @@ export const DiffViewerPlugin: Plugin = async ({ project, client, $, directory, 
     }
   }
 
-  const showDiff = async (files?: string[]): Promise<string> => {
-    if (!await isDeltaInstalled()) {
-      return `❌ delta is not installed.
+  const launchDiffViewer = async (files?: string[]): Promise<string> => {
+    if (!await isLumenInstalled()) {
+      return `❌ lumen is not installed.
 
 To install:
-  brew install dandavison/delta/delta
+  brew install jnsahaj/lumen/lumen
   # or
-  cargo install delta
+  cargo install lumen
 
 Then restart OpenCode.`
     }
@@ -101,34 +101,43 @@ Then restart OpenCode.`
       return "📝 No modified files.\n\nRun \`git add .\` to stage changes first."
     }
 
+    const fileList = modifiedFiles.map(f => `  • ${f}`).join('\n')
+    const fileArgs = modifiedFiles.map(f => `"${f}"`).join(' ')
+    const cmd = `cd "${directory}" && lumen diff ${fileArgs}`
+    
+    const platform = process.platform
+    
+    // Try to launch in new terminal
+    let launched = false
+    let errorMsg = ""
+    
     try {
-      // Get diff output with delta
-      let diffOutput = ""
-      
-      // Show staged diff
-      const stagedDiff = await $`cd "${directory}" && git diff --staged`.text()
-      if (stagedDiff.trim()) {
-        diffOutput += "=== STAGED CHANGES ===\n\n"
-        diffOutput += await $`cd "${directory}" && git diff --staged | delta --pager=never`.text()
+      if (platform === 'darwin') {
+        await $`osascript -e 'tell application "Terminal" to do script "${cmd}; exit"'`
+        launched = true
+      } else if (platform === 'linux') {
+        try {
+          await $`which gnome-terminal && gnome-terminal -- bash -c "${cmd}; read -p 'Press Enter to close...'" `
+          launched = true
+        } catch {
+          try {
+            await $`which xterm && xterm -e "bash -c '${cmd}; read -p Press Enter to close...'" `
+            launched = true
+          } catch (e) {
+            errorMsg = "No terminal emulator found (gnome-terminal/xterm)"
+          }
+        }
       }
-      
-      // Show unstaged diff
-      const unstagedDiff = await $`cd "${directory}" && git diff`.text()
-      if (unstagedDiff.trim()) {
-        if (diffOutput) diffOutput += "\n=== UNSTAGED CHANGES ===\n\n"
-        diffOutput += await $`cd "${directory}" && git diff | delta --pager=never`.text()
-      }
-
-      if (!diffOutput.trim()) {
-        return "📝 No changes to show."
-      }
-
-      const fileList = modifiedFiles.map(f => `  • ${f}`).join('\n')
-      
-      return `✅ Modified files (${modifiedFiles.length}):\n${fileList}\n\n${diffOutput}`
     } catch (e: any) {
-      return `❌ Error showing diff: ${e.message || e}`
+      errorMsg = e.message || "Unknown error"
     }
+
+    if (launched) {
+      return `✅ Opened lumen diff viewer:\n${fileList}\n\nKeybindings:\n  j/k: Navigate  {/}: Jump hunks  tab: Sidebar  e: Edit  q: Quit`
+    }
+
+    // If we couldn't launch, show manual instructions
+    return `📺 Could not open terminal automatically.\n\nTo view diffs in lumen:\n1. Open a new terminal\n2. Run:\n   ${cmd}\n\nModified files:\n${fileList}`
   }
 
   return {
@@ -136,7 +145,7 @@ Then restart OpenCode.`
       if (input.command === "diff") {
         const files = input.args?.trim() ? [input.args.trim()] : undefined
         output.handled = true
-        output.result = await showDiff(files)
+        output.result = await launchDiffViewer(files)
       }
     },
 
@@ -146,12 +155,12 @@ Then restart OpenCode.`
 
     tool: {
       view_diff: tool({
-        description: "Show git diff with syntax highlighting using delta.",
+        description: "Open the lumen diff viewer to show git diff for modified files.",
         args: {
           file: tool.schema.string().optional().describe("Optional: specific file path"),
         },
         async execute(args: any, ctx: any) {
-          return await showDiff(args.file ? [args.file] : undefined)
+          return await launchDiffViewer(args.file ? [args.file] : undefined)
         },
       }),
     },
