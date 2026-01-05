@@ -1,6 +1,6 @@
 {
   "name": "opencode-diff-viewer",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "OpenCode plugin + CLI tool for launching AI agents in tmux with diff viewing",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
