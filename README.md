@@ -3,33 +3,38 @@
 [![npm version](https://img.shields.io/npm/v/opencode-diff-viewer.svg)](https://www.npmjs.com/package/opencode-diff-viewer)
 [![npm downloads](https://img.shields.io/npm/dm/opencode-diff-viewer.svg)](https://www.npmjs.com/package/opencode-diff-viewer)
 
-一个 OpenCode 插件，使用 [delta](https://github.com/dandavison/delta) 提供语法高亮的 git diff 查看功能。
+一个 OpenCode 插件，使用 [lumen](https://github.com/jnsahaj/lumen) 提供美观的 TUI diff 查看功能。
 
 ## 功能特性
 
-- ✨ **自动安装 delta** - 插件会自动检测并安装 delta 依赖
+- ✨ **自动安装 lumen** - 插件会自动检测并安装 lumen 依赖
 - 🚀 **一键查看 diff** - 使用 `/diff` 命令快速查看代码变更
-- 🎨 **语法高亮** - 支持多种编程语言的语法高亮
+- 🔧 **智能终端适配** - 自动检测操作系统，打开新终端窗口展示 diff
 - 🤖 **LLM 工具集成** - LLM 可自动调用 `view_diff` 工具
 
 ## 前置条件
 
-### 1. 安装 delta
+### 1. 安装 lumen
 
-插件会自动尝试安装 delta，如果自动安装失败，需要手动安装：
+插件会自动尝试安装 lumen，如果自动安装失败，需要手动安装：
 
 **macOS / Linux (Homebrew)**:
 ```bash
-brew install dandavison/delta/delta
+brew install jnsahaj/lumen/lumen
+```
+
+**Bun**:
+```bash
+bun install jnsahaj/lumen/lumen
 ```
 
 **Cargo (Rust)**:
 ```bash
-cargo install delta
+cargo install lumen
 ```
 
 **Windows**:
-下载 [delta releases](https://github.com/dandavison/delta/releases) 并添加到 PATH
+下载 [lumen releases](https://github.com/jnsahaj/lumen/releases) 并添加到 PATH
 
 ### 2. Git 仓库
 
@@ -63,8 +68,8 @@ cat > ~/.config/opencode/opencode.json << 'EOF'
 {
   "command": {
     "diff": {
-      "template": "View git diff with syntax highlighting.",
-      "description": "Show git diff with syntax highlighting"
+      "template": "View git diff using lumen TUI.",
+      "description": "View diff of modified files using lumen TUI"
     }
   },
   "plugin": ["opencode-diff-viewer"]
@@ -91,25 +96,27 @@ EOF
 
 LLM 可以自动调用 `view_diff` 工具来展示代码变更。无需手动操作，LLM 会根据对话上下文智能判断何时需要展示 diff。
 
-## delta 快捷键
+## lumen 快捷键
 
-在 diff 输出中：
+在 lumen diff 查看器中：
 
 | 快捷键 | 功能 |
 |--------|------|
-| `n` / `p` | 下/上一个变更 |
-| `N` / `P` | 下/上一个文件 |
-| `q` | 退出（如果启用 pager） |
+| `j` / `k` 或 `↑` / `↓` | 上/下移动 |
+| `{` / `}` | 跳转到上/下一个变更块 |
+| `Tab` | 切换侧边栏 |
+| `e` | 在编辑器中打开文件 |
+| `q` | 退出 |
 
 ## 故障排除
 
-### 1. delta 未安装
+### 1. lumen 未安装
 
 ```
-❌ delta is not installed
+❌ lumen is not installed
 ```
 
-**解决方案**: 手动安装 delta（见上方前置条件）
+**解决方案**: 手动安装 lumen（见上方前置条件）
 
 ### 2. 没有修改的文件
 
@@ -122,7 +129,13 @@ LLM 可以自动调用 `view_diff` 工具来展示代码变更。无需手动操
 git add .
 ```
 
-### 3. 插件未加载
+### 3. 新终端未打开
+
+检查终端模拟器是否支持：
+- macOS: Terminal.app
+- Linux: gnome-terminal 或 xterm
+
+### 4. 插件未加载
 
 检查全局配置文件是否正确：
 ```bash
@@ -134,8 +147,8 @@ cat ~/.config/opencode/opencode.json
 {
   "command": {
     "diff": {
-      "template": "View git diff with syntax highlighting.",
-      "description": "Show git diff with syntax highlighting"
+      "template": "View git diff using lumen TUI.",
+      "description": "View diff of modified files using lumen TUI"
     }
   },
   "plugin": ["opencode-diff-viewer"]
@@ -145,8 +158,8 @@ cat ~/.config/opencode/opencode.json
 ## 工作原理
 
 1. **检测修改文件** - 插件使用 `git diff` 获取已暂存和未暂存的修改
-2. **格式化输出** - 通过 `delta` 管道输出，带语法高亮
-3. **自动安装** - 插件启动时检查 delta，未安装则自动安装
+2. **启动 lumen** - 在新终端窗口中运行 `lumen diff --file <files>`
+3. **自动安装** - 插件启动时检查 lumen，未安装则自动安装
 
 ## 项目结构
 
@@ -200,7 +213,7 @@ npm publish
 
 ## 依赖
 
-- [delta](https://github.com/dandavison/delta) - 语法高亮的 git diff 查看器
+- [lumen](https://github.com/jnsahaj/lumen) - TUI Diff 查看器
 - [@opencode-ai/plugin](https://www.npmjs.com/package/@opencode-ai/plugin) - OpenCode 插件 SDK
 
 ## License
