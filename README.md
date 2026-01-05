@@ -66,6 +66,12 @@ bun add -g opencode-diff-viewer
 mkdir -p ~/.config/opencode
 cat > ~/.config/opencode/opencode.json << 'EOF'
 {
+  "command": {
+    "diff": {
+      "template": "View git diff using lumen TUI.",
+      "description": "View diff of modified files using lumen TUI"
+    }
+  },
   "plugin": ["opencode-diff-viewer"]
 }
 EOF
@@ -136,9 +142,15 @@ git add .
 cat ~/.config/opencode/opencode.json
 ```
 
-确保配置正确：
+确保配置正确，包含 `command` 和 `plugin` 两部分：
 ```json
 {
+  "command": {
+    "diff": {
+      "template": "View git diff using lumen TUI.",
+      "description": "View diff of modified files using lumen TUI"
+    }
+  },
   "plugin": ["opencode-diff-viewer"]
 }
 ```
