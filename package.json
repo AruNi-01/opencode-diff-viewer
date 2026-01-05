@@ -18,8 +18,16 @@
     "lumen",
     "git"
   ],
-  "author": "",
+  "author": "AruNi",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AruNi-01/opencode-diff-viewer"
+  },
+  "bugs": {
+    "url": "https://github.com/AruNi-01/opencode-diff-viewer/issues"
+  },
+  "homepage": "https://github.com/AruNi-01/opencode-diff-viewer#readme",
   "peerDependencies": {
     "@opencode-ai/plugin": "^1.0.0"
   },
