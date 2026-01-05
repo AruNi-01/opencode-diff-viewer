@@ -1,17 +1,22 @@
 {
   "name": "opencode-diff-viewer",
   "version": "1.0.9",
-  "description": "OpenCode plugin for viewing git diffs using lumen TUI with tmux",
+  "description": "OpenCode plugin + CLI tool for launching AI agents in tmux with diff viewing",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "diffviewer": "./bin/diffviewer"
+  },
   "files": [
     "dist/",
     "command-diff.md",
+    "bin/",
     "start-opencode.sh"
   ],
   "scripts": {
     "build": "tsc",
-    "start": "./start-opencode.sh"
+    "start": "./start-opencode.sh",
+    "diffviewer": "./bin/diffviewer"
   },
   "keywords": [
     "opencode",
@@ -19,6 +24,8 @@
     "diff",
     "lumen",
     "tmux",
+    "cli",
+    "agent-launcher",
     "git"
   ],
   "author": "AarynLu",
