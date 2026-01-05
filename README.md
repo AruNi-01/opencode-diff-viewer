@@ -14,28 +14,72 @@
 
 ## 前置条件
 
-### 自动安装
+### 安装 tmux
 
-插件会在启动时自动检查并安装以下依赖：
+如果未安装 tmux，请先安装：
 
-1. **tmux** - 终端复用器
-2. **lumen** - TUI diff 查看器
-
-### 手动安装（如果自动安装失败）
-
-**tmux**:
 ```bash
 brew install tmux
 # or
 apt install tmux
 ```
 
-**lumen**:
+lumen 会在插件启动时自动安装。
+
+## 使用流程
+
+### 第 1 步：用 tmux 启动 OpenCode
+
 ```bash
-brew install jnsahaj/lumen/lumen
-# or
-cargo install lumen
+# 创建 tmux 会话并启动 OpenCode
+tmux new -s opencode -d && tmux send-keys -t opencode 'opencode' Enter
 ```
+
+然后进入 tmux 会话查看 OpenCode：
+
+```bash
+tmux attach -t opencode
+```
+
+### 第 2 步：在 OpenCode 中使用 /diff
+
+在 OpenCode TUI 中输入：
+
+```bash
+/diff              # 查看所有修改文件的 diff
+/diff src/app.ts   # 查看指定文件的 diff
+```
+
+### 第 3 步骤：查看 lumen diff
+
+执行 `/diff` 后，lumen 会在 tmux 会话 `opencode-diff-viewer` 中运行。
+
+**新开一个终端窗口**，运行：
+
+```bash
+tmux attach -t opencode-diff-viewer
+```
+
+查看 lumen diff。
+
+### tmux 快捷键
+
+在 tmux 中：
+
+| 快捷键 | 功能 |
+|--------|------|
+| `Ctrl+B` 然后 `D` | 分离会话（回到终端） |
+| `Ctrl+B` 然后 `?` | 查看所有快捷键 |
+| `Ctrl+C` | 终止当前会话 |
+
+**lumen 快捷键**:
+| 快捷键 | 功能 |
+|--------|------|
+| `j` / `k` 或 `↑` / `↓` | 上/下移动 |
+| `{` / `}` | 跳转到上/下一个变更块 |
+| `Tab` | 切换侧边栏 |
+| `e` | 在编辑器中打开文件 |
+| `q` | 退出 |
 
 ## 安装（全局配置）
 
@@ -73,61 +117,58 @@ EOF
 
 ### 3. 重启 OpenCode
 
-安装完成后重启 OpenCode TUI，插件会自动加载。
+安装完成后重启 OpenCode TUI（在 tmux 中），插件会自动加载。
 
-## 使用方法
-
-### 通过命令
-
-在 OpenCode TUI 中直接输入：
+## 完整使用示例
 
 ```bash
-/diff              # 查看所有修改文件的 diff
-/diff src/app.ts   # 查看指定文件的 diff
-```
+# 1. 安装插件
+npm install -g opencode-diff-viewer
 
-### 通过 LLM
+# 2. 配置 OpenCode
+mkdir -p ~/.config/opencode
+cat > ~/.config/opencode/opencode.json << 'EOF'
+{
+  "command": {
+    "diff": {
+      "template": "View git diff using lumen in tmux.",
+      "description": "View diff of modified files using lumen TUI"
+    }
+  },
+  "plugin": ["opencode-diff-viewer"]
+}
+EOF
 
-LLM 可以自动调用 `view_diff` 工具来展示代码变更。无需手动操作，LLM 会根据对话上下文智能判断何时需要展示 diff。
+# 3. 用 tmux 启动 OpenCode
+tmux new -s opencode -d && tmux send-keys -t opencode 'opencode' Enter
 
-### 查看 lumen
+# 4. 进入 tmux 会话
+tmux attach -t opencode
 
-执行 `/diff` 后，lumen 会在 tmux 会话中运行。要查看 lumen：
+# 5. 在 OpenCode 中使用 /diff 命令
+# /diff
 
-```bash
+# 6. 新终端窗口查看 lumen
 tmux attach -t opencode-diff-viewer
 ```
-
-**tmux 快捷键**:
-- `Ctrl+B` 然后 `D` - 分离会话（回到 OpenCode）
-- `Ctrl+B` 然后 `?` - 查看所有快捷键
-
-**lumen 快捷键**:
-| 快捷键 | 功能 |
-|--------|------|
-| `j` / `k` 或 `↑` / `↓` | 上/下移动 |
-| `{` / `}` | 跳转到上/下一个变更块 |
-| `Tab` | 切换侧边栏 |
-| `e` | 在编辑器中打开文件 |
-| `q` | 退出 |
 
 ## 故障排除
 
 ### 1. tmux 未安装
 
+```bash
+brew install tmux
 ```
-❌ tmux is not installed
-```
-
-**解决方案**: 手动安装 tmux（见上方手动安装）
 
 ### 2. lumen 未安装
 
-```
-❌ lumen is not installed
-```
+插件会自动安装。如果失败，手动安装：
 
-**解决方案**: 手动安装 lumen（见上方手动安装）
+```bash
+brew install jnsahaj/lumen/lumen
+# or
+cargo install lumen
+```
 
 ### 3. 没有修改的文件
 
@@ -136,23 +177,25 @@ tmux attach -t opencode-diff-viewer
 ```
 
 **解决方案**: 确保文件已修改并暂存：
+
 ```bash
 git add .
 ```
 
 ### 4. 插件未加载
 
-检查全局配置文件是否正确：
+检查配置：
+
 ```bash
 cat ~/.config/opencode/opencode.json
 ```
 
 ## 工作原理
 
-1. **检测依赖** - 插件启动时检查 tmux 和 lumen
-2. **自动安装** - 如果未安装，自动通过 brew 或 cargo 安装
-3. **创建 tmux 会话** - 执行 `/diff` 时创建后台 tmux 会话
-4. **运行 lumen** - 在 tmux 会话中运行 lumen diff
+1. **tmux 启动 OpenCode** - OpenCode 在 tmux 会话中运行
+2. **插件自动安装依赖** - 检查并安装 tmux 和 lumen
+3. **执行 /diff** - 创建新的 tmux 会话 "opencode-diff-viewer"
+4. **运行 lumen** - 在 tmux 会话中显示 diff
 
 ## 项目结构
 
