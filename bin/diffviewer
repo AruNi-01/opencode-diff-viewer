@@ -2,138 +2,61 @@
 
 const { spawn } = require('child_process');
 const path = require('path');
-const fs = require('fs');
 
-const CONFIG_FILE = path.join(process.env.HOME || process.env.USERPROFILE, '.config', 'diffviewer', 'config.json');
-
-// 默认工具配置
 const DEFAULT_TOOLS = {
-  opencode: {
-    name: 'OpenCode',
-    command: 'opencode',
-    description: 'AI-powered code editor',
-    install: 'npm install -g @opencode-ai/opencode'
-  },
-  claude: {
-    name: 'Claude CLI',
-    command: 'claude',
-    description: 'Anthropic CLI',
-    install: 'npm install -g @anthropic-ai/claude'
-  },
-  codex: {
-    name: 'Codex CLI',
-    command: 'codex',
-    description: 'OpenAI CLI',
-    install: 'npm install -g openai'
-  },
-  lumen: {
-    name: 'Lumen',
-    command: 'lumen diff',
-    description: 'TUI Diff Viewer',
-    install: 'brew install jnsahaj/lumen/lumen'
-  }
+  opencode: { name: 'OpenCode', command: 'opencode', description: 'AI-powered code editor' },
+  claude: { name: 'Claude CLI', command: 'claude', description: 'Anthropic CLI' },
+  codex: { name: 'Codex CLI', command: 'codex', description: 'OpenAI CLI' },
+  lumen: { name: 'Lumen', command: 'lumen diff', description: 'TUI Diff Viewer' }
 };
 
-// 加载配置
-function loadConfig() {
-  try {
-    if (fs.existsSync(CONFIG_FILE)) {
-      const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
-      return { ...DEFAULT_TOOLS, ...config.tools };
-    }
-  } catch (e) {
-    console.warn('Failed to load config:', e.message);
-  }
-  return DEFAULT_TOOLS;
-}
-
-// 检查 tmux 是否安装
 function checkTmux() {
   return new Promise((resolve) => {
     const proc = spawn('which', ['tmux'], { stdio: 'pipe' });
-    proc.on('close', (code) => {
-      resolve(code === 0);
-    });
-    proc.on('error', () => {
-      resolve(false);
-    });
-  });
-});
-
-// 安装 tmux
-async function installTmux() {
-  console.log('🔧 Installing tmux...');
-  return new Promise((resolve) => {
-    const proc = spawn('brew', ['install', 'tmux'], { stdio: 'inherit' });
-    proc.on('close', (code) => {
-      resolve(code === 0);
-    });
+    proc.on('close', (code) => resolve(code === 0));
+    proc.on('error', () => resolve(false));
   });
 }
 
-// 在 tmux 中启动工具
+async function installTmux() {
+  console.log('Installing tmux...');
+  return new Promise((resolve) => {
+    const proc = spawn('brew', ['install', 'tmux'], { stdio: 'inherit' });
+    proc.on('close', (code) => resolve(code === 0));
+  });
+}
+
 async function launchInTmux(sessionName, command) {
-  const tmuxExists = await checkTmux();
-  if (!tmuxExists) {
+  if (!await checkTmux()) {
     const installed = await installTmux();
     if (!installed) {
-      console.error('❌ Failed to install tmux');
+      console.error('Failed to install tmux');
       process.exit(1);
     }
   }
-
-  // 检查会话是否已存在
+  
   const check = spawn('tmux', ['has-session', '-t', sessionName], { stdio: 'pipe' });
   
   return new Promise((resolve) => {
     check.on('close', (code) => {
       if (code === 0) {
-        console.log(`📎 Session "${sessionName}" exists, attaching...`);
+        console.log('Session "' + sessionName + '" exists, attaching...');
         spawn('tmux', ['attach-session', '-t', sessionName], { stdio: 'inherit' });
       } else {
-        console.log(`🚀 Starting ${command} in tmux session "${sessionName}"...`);
+        console.log('Starting ' + command + ' in tmux session "' + sessionName + '"...');
         spawn('tmux', ['new-session', '-d', '-s', sessionName, command], { stdio: 'inherit' });
-        console.log(`✅ ${command} started in tmux session "${sessionName}"`);
-        console.log(`   Run: tmux attach -t ${sessionName}`);
+        console.log(command + ' started');
+        console.log('Run: tmux attach -t ' + sessionName);
       }
       resolve();
     });
   });
 }
 
-// 帮助信息
 function showHelp() {
-  console.log(`
-🤖 Agent Launcher - Launch AI tools in tmux
-
-Usage: diffviewer <command> [options]
-
-Commands:
-  opencode       Launch OpenCode in tmux
-  claude         Launch Claude CLI in tmux
-  codex          Launch Codex CLI in tmux
-  lumen          Launch Lumen diff viewer
-  diff           View git diff with lumen
-  list           List all available tools
-  attach <name>  Attach to a tmux session
-  kill <name>    Kill a tmux session
-  status         Show all running sessions
-
-Options:
-  -h, --help     Show this help
-  -v, --version  Show version
-
-Examples:
-  diffviewer opencode       # Start OpenCode
-  diffviewer claude         # Start Claude CLI
-  diffviewer attach opencode # Attach to OpenCode session
-
-Configuration:
-  Edit ~/.config/diffviewer/config.json to add custom tools.
-`);
+  console.log('Usage: diffviewer <command>\n\nCommands:\n  opencode  - Launch OpenCode\n  claude    - Launch Claude CLI\n  codex     - Launch Codex CLI\n  lumen     - Launch Lumen diff\n  diff      - View git diff\n  status    - Show running sessions\n  attach    - Attach to session\n  kill      - Kill session\n  list      - List tools');
 }
 
-// 主程序
 async function main() {
   const args = process.argv.slice(2);
   const command = args[0];
@@ -148,71 +71,43 @@ async function main() {
     process.exit(0);
   }
 
-  const tools = loadConfig();
-
-  // list 命令
   if (command === 'list') {
-    console.log('📦 Available tools:\n');
-    Object.entries(tools).forEach(([key, tool]) => {
-      console.log(`  ${key.padEnd(10)} - ${tool.description}`);
+    Object.entries(DEFAULT_TOOLS).forEach(([key, tool]) => {
+      console.log('  ' + key + ' - ' + tool.description);
     });
     process.exit(0);
   }
 
-  // status 命令
   if (command === 'status') {
-    console.log('📊 Running sessions:\n');
     const proc = spawn('tmux', ['list-sessions', '-F', '#{session_name}'], { stdio: 'pipe' });
     let sessions = '';
-    proc.stdout.on('data', (data) => {
-      sessions += data.toString();
-    });
+    proc.stdout.on('data', (data) => { sessions += data.toString(); });
     proc.on('close', () => {
-      if (sessions.trim()) {
-        sessions.split('\n').filter(s => s.trim()).forEach(s => {
-          console.log(`  • ${s}`);
-        });
-      } else {
-        console.log('  No running sessions');
-      }
+      console.log(sessions || '  No running sessions');
     });
     process.exit(0);
   }
 
-  // attach 命令
   if (command === 'attach') {
-    const sessionName = args[1] || 'opencode';
-    console.log(`📎 Attaching to ${sessionName}...`);
-    spawn('tmux', ['attach-session', '-t', sessionName], { stdio: 'inherit' });
+    spawn('tmux', ['attach-session', '-t', (args[1] || 'opencode')], { stdio: 'inherit' });
     process.exit(0);
   }
 
-  // kill 命令
   if (command === 'kill') {
-    const sessionName = args[1] || 'opencode';
-    console.log(`💀 Killing session ${sessionName}...`);
-    spawn('tmux', ['kill-session', '-t', sessionName], { stdio: 'inherit' });
+    spawn('tmux', ['kill-session', '-t', (args[1] || 'opencode')], { stdio: 'inherit' });
     process.exit(0);
   }
 
-  // diff 命令
   if (command === 'diff') {
-    const sessionName = 'opencode-diff-viewer';
-    console.log('📊 Viewing git diff with lumen...');
-    await launchInTmux(sessionName, 'lumen diff');
+    await launchInTmux('opencode-diff-viewer', 'lumen diff');
     process.exit(0);
   }
 
-  // 查找工具
-  const tool = tools[command];
+  const tool = DEFAULT_TOOLS[command];
   if (tool) {
-    const sessionName = command;
-    const cmd = tool.command || command;
-    console.log(`🚀 Launching ${tool.name}...`);
-    await launchInTmux(sessionName, cmd);
+    await launchInTmux(command, tool.command);
   } else {
-    console.error(`❌ Unknown command: ${command}`);
-    console.log('Run "diffviewer --help" for usage');
+    console.error('Unknown command: ' + command);
     process.exit(1);
   }
 }
