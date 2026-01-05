@@ -11,6 +11,15 @@ export const DiffViewerPlugin: Plugin = async ({ project, client, $, directory, 
     }
   }
 
+  const isTmuxInstalled = async (): Promise<boolean> => {
+    try {
+      await $`which tmux`
+      return true
+    } catch {
+      return false
+    }
+  }
+
   const isBrewInstalled = async (): Promise<boolean> => {
     try {
       await $`which brew`
@@ -54,6 +63,22 @@ export const DiffViewerPlugin: Plugin = async ({ project, client, $, directory, 
     }
   }
 
+  const installTmux = async (): Promise<{ success: boolean; method?: string; error?: string }> => {
+    if (await isBrewInstalled()) {
+      try {
+        await $`brew install tmux`
+        return { success: true, method: "brew" }
+      } catch (e) {
+        console.warn(`brew install tmux failed: ${e}`)
+      }
+    }
+
+    return {
+      success: false,
+      error: "Please install tmux manually:\n  brew install tmux\n  # or\n  apt install tmux"
+    }
+  }
+
   const ensureLumenInstalled = async (): Promise<{ installed: boolean; message?: string }> => {
     if (await isLumenInstalled()) {
       return { installed: true }
@@ -67,7 +92,29 @@ export const DiffViewerPlugin: Plugin = async ({ project, client, $, directory, 
     return { installed: false, message: `❌ ${result.error}` }
   }
 
-  await ensureLumenInstalled()
+  const ensureTmuxInstalled = async (): Promise<{ installed: boolean; message?: string }> => {
+    if (await isTmuxInstalled()) {
+      return { installed: true }
+    }
+
+    const result = await installTmux()
+    if (result.success) {
+      return { installed: true, message: `✅ tmux installed via ${result.method}` }
+    }
+
+    return { installed: false, message: `❌ ${result.error}` }
+  }
+
+  // Check and install dependencies on startup
+  const tmuxCheck = await ensureTmuxInstalled()
+  if (!tmuxCheck.installed) {
+    console.warn(tmuxCheck.message)
+  }
+
+  const lumenCheck = await ensureLumenInstalled()
+  if (!lumenCheck.installed) {
+    console.warn(lumenCheck.message)
+  }
 
   const getModifiedFiles = async (): Promise<string[]> => {
     try {
@@ -84,6 +131,19 @@ export const DiffViewerPlugin: Plugin = async ({ project, client, $, directory, 
   }
 
   const launchDiffViewer = async (files?: string[]): Promise<string> => {
+    // Check tmux
+    if (!await isTmuxInstalled()) {
+      return `❌ tmux is not installed.
+
+To install:
+  brew install tmux
+  # or
+  apt install tmux
+
+Then restart OpenCode.`
+    }
+
+    // Check lumen
     if (!await isLumenInstalled()) {
       return `❌ lumen is not installed.
 
@@ -103,41 +163,29 @@ Then restart OpenCode.`
 
     const fileList = modifiedFiles.map(f => `  • ${f}`).join('\n')
     const fileArgs = modifiedFiles.map(f => `"${f}"`).join(' ')
+    const sessionName = "opencode-diff-viewer"
     const cmd = `cd "${directory}" && lumen diff ${fileArgs}`
-    
-    const platform = process.platform
-    
-    // Try to launch in new terminal
-    let launched = false
-    let errorMsg = ""
-    
+
     try {
-      if (platform === 'darwin') {
-        await $`osascript -e 'tell application "Terminal" to do script "${cmd}; exit"'`
-        launched = true
-      } else if (platform === 'linux') {
-        try {
-          await $`which gnome-terminal && gnome-terminal -- bash -c "${cmd}; read -p 'Press Enter to close...'" `
-          launched = true
-        } catch {
-          try {
-            await $`which xterm && xterm -e "bash -c '${cmd}; read -p Press Enter to close...'" `
-            launched = true
-          } catch (e) {
-            errorMsg = "No terminal emulator found (gnome-terminal/xterm)"
-          }
-        }
-      }
+      // Kill existing session if it exists
+      await $`tmux kill-session -t "${sessionName}" 2>/dev/null || true`
+
+      // Create new tmux session
+      await $`tmux new-session -d -s "${sessionName}" "${cmd}"`
+
+      return `✅ Opened lumen in tmux session "${sessionName}":\n${fileList}\n\nTo use lumen:
+  1. Run: tmux attach -t "${sessionName}"
+  2. Navigate: j/k or arrows, {/} for hunks
+  3. Detach: Ctrl+B then D
+
+Keybindings:
+  j/k or ↑/↓: Navigate    {/}: Jump hunks
+  tab: Sidebar           e: Edit file
+  q: Quit`
     } catch (e: any) {
-      errorMsg = e.message || "Unknown error"
+      return `❌ Failed to launch tmux session: ${e.message || e}\n\nTry manually:
+  tmux new-session -s "${sessionName}" "${cmd}"`
     }
-
-    if (launched) {
-      return `✅ Opened lumen diff viewer:\n${fileList}\n\nKeybindings:\n  j/k: Navigate  {/}: Jump hunks  tab: Sidebar  e: Edit  q: Quit`
-    }
-
-    // If we couldn't launch, show manual instructions
-    return `📺 Could not open terminal automatically.\n\nTo view diffs in lumen:\n1. Open a new terminal\n2. Run:\n   ${cmd}\n\nModified files:\n${fileList}`
   }
 
   return {
@@ -155,7 +203,7 @@ Then restart OpenCode.`
 
     tool: {
       view_diff: tool({
-        description: "Open the lumen diff viewer to show git diff for modified files.",
+        description: "Open the lumen diff viewer in a tmux session.",
         args: {
           file: tool.schema.string().optional().describe("Optional: specific file path"),
         },
