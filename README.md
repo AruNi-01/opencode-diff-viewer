@@ -43,29 +43,32 @@ cargo install lumen
 git status  # 查看修改的文件
 ```
 
-## 安装
+## 安装（全局配置）
 
 ### 1. 安装 npm 包
 
 ```bash
 # npm
-npm install opencode-diff-viewer
+npm install -g opencode-diff-viewer
 
 # pnpm
-pnpm add opencode-diff-viewer
+pnpm add -g opencode-diff-viewer
 
 # bun
-bun add opencode-diff-viewer
+bun add -g opencode-diff-viewer
 ```
 
-### 2. 配置 opencode.json
+### 2. 配置全局 opencode.json
 
-在项目的 `opencode.json` 中添加插件：
+创建或编辑 `~/.config/opencode/opencode.json`：
 
-```json
+```bash
+mkdir -p ~/.config/opencode
+cat > ~/.config/opencode/opencode.json << 'EOF'
 {
   "plugin": ["opencode-diff-viewer"]
 }
+EOF
 ```
 
 ### 3. 重启 OpenCode
@@ -128,10 +131,9 @@ git add .
 
 ### 4. 插件未加载
 
-检查配置文件是否正确：
+检查全局配置文件是否正确：
 ```bash
-# 检查 opencode.json 配置
-cat opencode.json
+cat ~/.config/opencode/opencode.json
 ```
 
 确保配置正确：
@@ -181,8 +183,8 @@ npm run build
 # 链接本地包
 npm link
 
-# 在测试项目中
-npm link opencode-diff-viewer
+# 在全局使用
+npm link -g opencode-diff-viewer
 ```
 
 ### 发布新版本
