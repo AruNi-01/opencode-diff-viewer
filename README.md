@@ -143,7 +143,7 @@ opencode-diff-viewer/
 
 ```bash
 # 克隆项目
-git clone https://github.com/yourusername/opencode-diff-viewer.git
+git clone https://github.com/AruNi-01/opencode-diff-viewer.git
 cd opencode-diff-viewer
 
 # 安装依赖
@@ -182,4 +182,4 @@ MIT
 
 ## 作者
 
-[Your Name](https://github.com/yourusername)
+[AarynLu](https://github.com/AruNi-01)
