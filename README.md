@@ -45,7 +45,7 @@ git status  # 查看修改的文件
 
 ## 安装
 
-### 方式一：npm / pnpm / bun 安装（推荐）
+### 1. 安装 npm 包
 
 ```bash
 # npm
@@ -58,68 +58,19 @@ pnpm add opencode-diff-viewer
 bun add opencode-diff-viewer
 ```
 
-### 方式二：全局配置（适用于所有项目）
-
-如果你想在所有项目中使用此插件，可以配置全局插件：
-
-1. 创建全局配置目录：
-   ```bash
-   mkdir -p ~/.config/opencode
-   ```
-
-2. 创建 `~/.config/opencode/opencode.json`：
-   ```json
-   {
-     "plugin": ["opencode-diff-viewer"]
-   }
-   ```
-
-3. 重启 OpenCode，插件会自动加载
-
-### 方式三：项目级别配置
-
-在项目根目录创建 `.opencode` 目录（注意前面的点）：
-
-```bash
-# 项目根目录
-mkdir -p .opencode/plugin
-mkdir -p .opencode/command
-
-# 复制插件文件
-cp node_modules/opencode-diff-viewer/dist .opencode/plugin/diff-viewer
-cp node_modules/opencode-diff-viewer/command-diff.md .opencode/command/diff.md
-
-# 或使用 npm link
-npm link opencode-diff-viewer
-cd ~/.config/opencode
-ln -s /path/to/your/project/node_modules/opencode-diff-viewer/dist ./plugin/diff-viewer
-ln -s /path/to/your/project/node_modules/opencode-diff-viewer/command-diff.md ./command/diff.md
-```
-
-### 目录说明
-
-| 目录 | 位置 | 作用 |
-|------|------|------|
-| `.opencode/` | 项目根目录 | 项目级别插件配置 |
-| `~/.config/opencode/` | 用户主目录 | 全局插件配置（跨项目共享） |
-
-**注意**：目录名称是 `.opencode`（带有点），不是 `opencode`。
-
-## 配置 opencode.json
+### 2. 配置 opencode.json
 
 在项目的 `opencode.json` 中添加插件：
 
 ```json
 {
-  "command": {
-    "diff": {
-      "template": "Open the lumen diff viewer to show visual git diffs for modified files.",
-      "description": "View diff of modified files using lumen TUI"
-    }
-  },
   "plugin": ["opencode-diff-viewer"]
 }
 ```
+
+### 3. 重启 OpenCode
+
+安装完成后重启 OpenCode TUI，插件会自动加载。
 
 ## 使用方法
 
@@ -130,7 +81,6 @@ ln -s /path/to/your/project/node_modules/opencode-diff-viewer/command-diff.md ./
 ```bash
 /diff              # 查看所有修改文件的 diff
 /diff src/app.ts   # 查看指定文件的 diff
-/diff src/         # 查看目录下所有文件的 diff
 ```
 
 ### 通过 LLM
@@ -180,22 +130,15 @@ git add .
 
 检查配置文件是否正确：
 ```bash
-# 检查 .opencode 目录是否存在
-ls -la .opencode/
-
 # 检查 opencode.json 配置
 cat opencode.json
 ```
 
-### 5. 全局配置不生效
-
-确保全局配置路径正确：
-```bash
-# macOS / Linux
-ls -la ~/.config/opencode/
-
-# 检查配置内容
-cat ~/.config/opencode/opencode.json
+确保配置正确：
+```json
+{
+  "plugin": ["opencode-diff-viewer"]
+}
 ```
 
 ## 工作原理
