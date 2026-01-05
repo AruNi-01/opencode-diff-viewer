@@ -66,7 +66,7 @@ export const DiffViewerPlugin = async ({ project, client, $, directory, worktree
         }
         return { installed: false, message: `❌ ${result.error}` };
     };
-    const initResult = await ensureLumenInstalled();
+    await ensureLumenInstalled();
     const getModifiedFiles = async () => {
         try {
             const unstaged = await $ `git diff --name-only`.text();
@@ -81,41 +81,38 @@ export const DiffViewerPlugin = async ({ project, client, $, directory, worktree
             return [];
         }
     };
-    const openDiffInNewTerminal = async (fileArgs) => {
-        const platform = process.platform;
-        if (platform === 'darwin') {
-            await $ `osascript -e 'tell application "Terminal" to do script "cd ${directory} && lumen diff ${fileArgs}; exit"'`;
-            return;
-        }
-        if (platform === 'linux') {
-            try {
-                await $ `which gnome-terminal && gnome-terminal -- bash -c "cd ${directory} && lumen diff ${fileArgs}; read -p 'Press Enter to close...'"`;
-                return;
-            }
-            catch {
-                try {
-                    await $ `which xterm && xterm -e "cd ${directory} && lumen diff ${fileArgs}; read -p 'Press Enter to close...'"`;
-                    return;
-                }
-                catch { }
-            }
-        }
-        await $ `lumen diff ${fileArgs}`;
-    };
     const launchDiffViewer = async (files) => {
-        const lumenCheck = await ensureLumenInstalled();
-        if (!lumenCheck.installed) {
-            return lumenCheck.message || "❌ lumen is not installed and auto-install failed.";
+        if (!await isLumenInstalled()) {
+            return "❌ lumen is not installed.\n\nTo install:\n  brew install jnsahaj/lumen/lumen\n  # or\n  cargo install lumen";
         }
         const modifiedFiles = files && files.length > 0 ? files : await getModifiedFiles();
         if (modifiedFiles.length === 0) {
-            return "📝 No modified files to show diff for.";
+            return "📝 No modified files to show diff for.\n\nRun `git add .` to stage changes first.";
         }
+        const platform = process.platform;
+        const fileArgs = modifiedFiles.map(f => `"${f}"`).join(' ');
+        const cmd = `cd "${directory}" && lumen diff ${fileArgs}`;
         try {
-            const fileArgs = modifiedFiles.map(f => `--file "${f}"`).join(' ');
-            await openDiffInNewTerminal(fileArgs);
-            const prefix = lumenCheck.message ? `${lumenCheck.message}\n\n` : "";
-            return `${prefix}✅ Opened lumen diff viewer for ${modifiedFiles.length} file(s):
+            if (platform === 'darwin') {
+                await $ `osascript -e 'tell application "Terminal" to do script "${cmd}; exit"'`;
+            }
+            else if (platform === 'linux') {
+                try {
+                    await $ `which gnome-terminal && gnome-terminal -- bash -c "${cmd}; read -p 'Press Enter to close...'" `;
+                }
+                catch {
+                    try {
+                        await $ `which xterm && xterm -e "bash -c '${cmd}; read -p Press Enter to close...'" `;
+                    }
+                    catch {
+                        return `❌ No terminal emulator found (gnome-terminal/xterm).\n\nPlease run manually:\n  ${cmd}`;
+                    }
+                }
+            }
+            else {
+                await $ `${cmd}`;
+            }
+            return `✅ Opened lumen diff viewer for ${modifiedFiles.length} file(s):
 ${modifiedFiles.map(f => `  • ${f}`).join('\n')}
 
 Keybindings:
@@ -124,7 +121,7 @@ Keybindings:
   q: Quit`;
         }
         catch (error) {
-            return `❌ Failed to launch diff viewer: ${error}`;
+            return `❌ Failed to launch diff viewer: ${error}\n\nTry running manually:\n  ${cmd}`;
         }
     };
     return {
