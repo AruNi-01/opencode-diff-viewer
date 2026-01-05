@@ -1,21 +1,24 @@
 {
   "name": "opencode-diff-viewer",
   "version": "1.0.8",
-  "description": "OpenCode plugin for viewing git diffs using lumen TUI",
+  "description": "OpenCode plugin for viewing git diffs using lumen TUI with tmux",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist/",
-    "command-diff.md"
+    "command-diff.md",
+    "start-opencode.sh"
   ],
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "start": "./start-opencode.sh"
   },
   "keywords": [
     "opencode",
     "opencode-plugin",
     "diff",
     "lumen",
+    "tmux",
     "git"
   ],
   "author": "AarynLu",
